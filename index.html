@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>File Upload</title>
+    <style>
+        #sourceUrlDisplay {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="uploadSection" style="display:none;">
+        <input type="file" id="fileInput" accept=".mp4,.jpg,.png">
+        <button id="uploadButton">Upload File</button>
+    </div>
+
+    <div id="errorSection">
+        <p>Please follow the link created in ChatGPT.</p>
+    </div>
+
+    <div id="sourceUrlDisplay"></div>
+
+    <script>
+        const uploadSection = document.getElementById('uploadSection');
+        const errorSection = document.getElementById('errorSection');
+        const fileInput = document.getElementById('fileInput');
+        const sourceUrlDisplay = document.getElementById('sourceUrlDisplay');
+
+        const queryParameters = new URLSearchParams(window.location.search);
+        const uploadUrl = decodeURI(queryParameters.get('url'));
+        const resourceId = queryParameters.get('id');
+
+        document.getElementById('uploadButton').addEventListener('click', handleUploadClick);
+
+        function handleUploadClick() {
+            const file = fileInput.files[0];
+            if (!file) {
+                console.log('No file selected');
+                return;
+            }
+
+            const fileExtension = getFileExtension(file.name);
+            uploadFile(file, uploadUrl, resourceId, fileExtension);
+
+            resetUploadInterface();
+        }
+
+        function uploadFile(file, url, id, extension) {
+            fetch(url, {
+                method: 'PUT',
+                body: file,
+                headers: { 'Content-Type': '' }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                displaySourceUrl(id, extension);
+            })
+            .catch(error => {
+                console.error("Error uploading file:", error);
+                sourceUrlDisplay.innerText = `Error uploading file: ${error}`;
+            });
+        }
+
+        function displaySourceUrl(id, extension) {
+            const sourceUrl = `https://shotstack-ingest-api-v1-sources.s3.ap-southeast-2.amazonaws.com/wzr6y0wtti/${id}/source.${extension}`;
+            const sourceUrlButton = document.createElement("button");
+            sourceUrlButton.innerText = "Copy Link";
+            sourceUrlButton.onclick = () => copyToClipboard(sourceUrl);
+            sourceUrlDisplay.innerHTML = '';
+            sourceUrlDisplay.appendChild(sourceUrlButton);
+        }
+
+        function getFileExtension(filename) {
+            return filename.slice((filename.lastIndexOf(".") - 1 >>> 0) + 2);
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text)
+                .then(() => alert("Link copied to clipboard"))
+                .catch(err => console.error('Error in copying text: ', err));
+        }
+
+        function resetUploadInterface() {
+            fileInput.value = '';
+            sourceUrlDisplay.innerHTML = '';
+        }
+
+        if (uploadUrl && resourceId) {
+            uploadSection.style.display = 'block';
+            errorSection.style.display = 'none';
+        } else {
+            uploadSection.style.display = 'none';
+            errorSection.style.display = 'block';
+        }
+    </script>
+</body>
+</html>
